@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Activity, AlertTriangle, Antenna, Ban, CheckCircle2, Gauge, RotateCcw, Settings2, ShieldCheck, SlidersHorizontal, Wind, Zap } from 'lucide-react'
+import { AntennaSimulator } from '@/src/simulation/simulator'
+import { SimulationState } from '@/src/simulation/types'
 
 type Axis = { position: number; velocity: number; target: number; measured: number; command: number; error: number; p: number; i: number; d: number; truePosition: number }
 type Sim = { time: number; az: Axis; el: Axis; health: number; state: 'NORMAL' | 'DEGRADED' | 'FAULT' | 'SAFE'; watchdog: number; rms: number; maxError: number; events: string[]; history: { t: number; target: number; actual: number; error: number; command: number; measured: number }[] }
@@ -11,6 +13,44 @@ const initialSim = (): Sim => ({ time: 0, az: initialAxis(68), el: initialAxis(3
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 const fmt = (v: number, digits = 1) => Number.isFinite(v) ? v.toFixed(digits) : '—'
 
+function toDashboardState(state: SimulationState): Sim {
+  const mapAxis = (axis: SimulationState['az'], target: number): Axis => ({
+    position: axis.position,
+    velocity: axis.velocity,
+    target,
+    measured: axis.measuredEncoder,
+    command: axis.command,
+    error: axis.error,
+    p: axis.pid.p,
+    i: axis.pid.i,
+    d: axis.pid.d,
+    truePosition: axis.position,
+  })
+  const history = state.history.map(point => ({
+    t: point.time,
+    target: point.targetAz,
+    actual: point.actualAz,
+    error: Math.hypot(point.azError, point.elError),
+    command: point.commandAz,
+    measured: point.actualAz,
+  }))
+  const errors = history.map(point => point.error)
+  const rms = errors.length ? Math.sqrt(errors.reduce((sum, error) => sum + error ** 2, 0) / errors.length) : 0
+  const health = clamp(100 - rms * 1.3 - (state.safety === 'FAULT' ? 35 : state.safety === 'DEGRADED' ? 18 : 0), 0, 100)
+  return {
+    time: state.time,
+    az: mapAxis(state.az, state.targetAz),
+    el: mapAxis(state.el, state.targetEl),
+    health,
+    state: state.safety === 'WARNING' ? 'DEGRADED' : state.safety,
+    watchdog: state.watchdog === 'TIMEOUT' ? 3.2 : 0.2,
+    rms,
+    maxError: errors.length ? Math.max(...errors) : 0,
+    events: state.events,
+    history,
+  }
+}
+
 export default function Page() {
   const [sim, setSim] = useState<Sim>(initialSim)
   const [running, setRunning] = useState(true)
@@ -19,45 +59,38 @@ export default function Page() {
   const [params, setParams] = useState({ azTarget: 68, elTarget: 32, kp: 1.8, ki: 0.08, kd: 0.42, backlash: 0.4, friction: 0.08, degradation: 0, delay: 0.2, wind: 0 })
   const [estop, setEstop] = useState(false)
   const last = useRef(performance.now())
+  const engine = useRef(new AntennaSimulator())
+
+  useEffect(() => {
+    const config = engine.current.config
+    config.az.pid = { ...config.az.pid, kp: params.kp, ki: params.ki, kd: params.kd }
+    config.el.pid = { ...config.el.pid, kp: params.kp, ki: params.ki, kd: params.kd }
+    config.az.gearbox.backlash = faults.backlash ? 3.5 : params.backlash
+    config.el.gearbox.backlash = faults.backlash ? 3.5 : params.backlash
+    config.az.mechanics.friction = params.friction + (faults.backlash ? 0.18 : 0)
+    config.el.mechanics.friction = params.friction + (faults.backlash ? 0.18 : 0)
+    config.az.motor.degradation = faults.motor ? Math.max(params.degradation, 48) : params.degradation
+    config.el.motor.degradation = faults.motor ? Math.max(params.degradation, 48) : params.degradation
+    config.disturbanceTorque = faults.wind ? 0.22 : 0
+    config.feedbackDelay = faults.delay ? params.delay : 0
+    config.az.encoder.dropout = faults.encoder
+    config.el.encoder.dropout = faults.encoder
+    config.emergencyStop = estop
+    config.watchdogTimeout = faults.watchdog
+  }, [params, faults, estop])
 
   useEffect(() => {
     if (!running) return
     const id = window.setInterval(() => {
       const now = performance.now(); const dt = clamp((now - last.current) / 1000, 0.01, 0.08); last.current = now
-      setSim(prev => {
-        const t = prev.time + dt
-        const targetAz = profile === 'sine' ? 70 + 28 * Math.sin(t * 0.32) : profile === 'pass' ? 45 + 50 * Math.sin((t - 2) * 0.12) : params.azTarget
-        const targetEl = profile === 'sine' ? 34 + 12 * Math.sin(t * 0.32 + 1) : profile === 'pass' ? 38 + 18 * Math.sin((t - 2) * 0.12 + 0.7) : params.elTarget
-        const step = (axis: Axis, target: number, axisName: string) => {
-          const actualFeedback = faults.encoder ? axis.measured : axis.position
-          const error = target - actualFeedback
-          const p = params.kp * error
-          const i = clamp(axis.i + params.ki * error * dt, -45, 45)
-          const d = params.kd * (error - axis.error) / dt
-          const raw = p + i + d
-          const command = clamp(raw, -100, 100)
-          const torque = command * (1 - params.degradation / 100) * (faults.motor ? 0.52 : 1)
-          const windForce = faults.wind ? Math.sin(t * 2.7 + (axisName === 'EL' ? 1 : 0)) * 0.22 : 0
-          const friction = params.friction + (faults.backlash ? 0.18 : 0)
-          const acceleration = (torque * 0.075 - friction * axis.velocity + windForce) / (axisName === 'AZ' ? 1.8 : 1.15)
-          const velocity = clamp(axis.velocity + acceleration * dt, -28, 28)
-          const backlash = (faults.backlash ? 3.5 : params.backlash) / 2
-          const position = clamp(axis.position + (Math.abs(velocity) > 0.7 ? velocity * dt * (1 - backlash / 100) : 0), axisName === 'AZ' ? 0 : 0, axisName === 'AZ' ? 360 : 90)
-          const noise = faults.encoder ? (Math.random() - 0.5) * 1.5 : (Math.random() - 0.5) * 0.035
-          const measured = faults.encoder ? (t % 4 < 1.7 ? axis.measured : position + noise) : Math.round((position + noise) * 40) / 40
-          return { ...axis, position, truePosition: position, velocity, target, measured, command, error, p, i, d }
-        }
-        const az = step(prev.az, targetAz, 'AZ'); const el = step(prev.el, targetEl, 'EL')
-        const pointError = Math.hypot(az.error, el.error); const history = [...prev.history, { t, target: targetAz, actual: az.position, error: pointError, command: az.command, measured: az.measured }].slice(-90)
-        const health = clamp(100 - pointError * 0.22 - params.degradation * 0.35 - (faults.encoder ? 34 : 0) - (faults.backlash ? 15 : 0) - (faults.motor ? 13 : 0) - (faults.delay ? 10 : 0), 0, 100)
-        const safe = estop || faults.watchdog || faults.encoder && t % 4 < 1.7
-        const state = safe ? 'SAFE' : health < 60 ? 'FAULT' : health < 86 ? 'DEGRADED' : 'NORMAL'
-        const event = safe && prev.state !== 'SAFE' ? (estop ? 'EMERGENCY STOP — SAFE MODE' : 'ENCODER / WATCHDOG FAULT — SAFE MODE') : !safe && prev.state === 'SAFE' ? 'SYSTEM RESET — CONTROL ENABLED' : prev.state !== state ? `${state} STATE ENTERED` : ''
-        return { ...prev, time: t, az: safe ? { ...az, command: 0 } : az, el: safe ? { ...el, command: 0 } : el, health, state, watchdog: faults.watchdog ? 3.2 : 0.2, rms: Math.sqrt(history.reduce((s, x) => s + x.error ** 2, 0) / history.length), maxError: Math.max(prev.maxError, pointError), history, events: event ? [event, ...prev.events].slice(0, 6) : prev.events }
-      })
+      const targetAz = profile === 'sine' ? 70 + 28 * Math.sin(engine.current.state.time * 0.32) : profile === 'pass' ? 45 + 50 * Math.sin((engine.current.state.time - 2) * 0.12) : params.azTarget
+      const targetEl = profile === 'sine' ? 34 + 12 * Math.sin(engine.current.state.time * 0.32 + 1) : profile === 'pass' ? 38 + 18 * Math.sin((engine.current.state.time - 2) * 0.12 + 0.7) : params.elTarget
+      engine.current.setTargets(targetAz, targetEl)
+      const next = engine.current.update(dt)
+      setSim(toDashboardState(next))
     }, 50)
     return () => clearInterval(id)
-  }, [running, profile, params, faults, estop])
+  }, [running, profile, params.azTarget, params.elTarget])
 
   const setParam = (key: keyof typeof params, value: number) => setParams(p => ({ ...p, [key]: value }))
   const healthColor = sim.health > 85 ? 'good' : sim.health > 60 ? 'warn' : 'bad'
@@ -66,7 +99,7 @@ export default function Page() {
 
   return <main className="dashboard-shell">
     <header className="topbar"><div className="brand"><div className="brand-mark"><Antenna size={21} /></div><div><p className="eyebrow">GROUND SEGMENT / ENGINEERING SIMULATION</p><h1>SATCOM <span>ANTENNA</span> CONTROL</h1></div></div><div className="top-status"><span className={`status-dot ${healthColor}`} /> <span>OVERALL HEALTH</span><strong>{fmt(sim.health, 0)}%</strong><span className={`state-pill ${sim.state.toLowerCase()}`}>{sim.state}</span></div></header>
-    <section className="summary-strip"><div><span>SIM TIME</span><strong>{fmt(sim.time, 1)} s</strong></div><div><span>AZ TARGET</span><strong>{fmt(sim.az.target)}°</strong></div><div><span>EL TARGET</span><strong>{fmt(sim.el.target)}°</strong></div><div><span>RMS ERROR</span><strong>{fmt(sim.rms)}°</strong></div><div><span>WATCHDOG</span><strong className={sim.watchdog > 1 ? 'text-red' : ''}>{sim.watchdog > 1 ? 'TIMEOUT' : 'NOMINAL'}</strong></div><div className="run-control"><button className="ghost-btn" onClick={() => setRunning(v => !v)}>{running ? 'PAUSE' : 'RESUME'}</button><button className="danger-btn" onClick={() => { setEstop(true); setRunning(true) }}><Ban size={14} /> E-STOP</button><button className="icon-btn" aria-label="Reset" onClick={() => { setSim(initialSim()); setEstop(false); setRunning(true) }}><RotateCcw size={16} /></button></div></section>
+    <section className="summary-strip"><div><span>SIM TIME</span><strong>{fmt(sim.time, 1)} s</strong></div><div><span>AZ TARGET</span><strong>{fmt(sim.az.target)}°</strong></div><div><span>EL TARGET</span><strong>{fmt(sim.el.target)}°</strong></div><div><span>RMS ERROR</span><strong>{fmt(sim.rms)}°</strong></div><div><span>WATCHDOG</span><strong className={sim.watchdog > 1 ? 'text-red' : ''}>{sim.watchdog > 1 ? 'TIMEOUT' : 'NOMINAL'}</strong></div><div className="run-control"><button className="ghost-btn" onClick={() => setRunning(v => !v)}>{running ? 'PAUSE' : 'RESUME'}</button><button className="danger-btn" onClick={() => { setEstop(true); setRunning(true) }}><Ban size={14} /> E-STOP</button><button className="icon-btn" aria-label="Reset" onClick={() => { engine.current.reset(); setSim(initialSim()); setEstop(false); setRunning(true) }}><RotateCcw size={16} /></button></div></section>
 
     <div className="workspace"><aside className="sidebar"><Panel title="TARGET GENERATOR" icon={<SlidersHorizontal size={15} />}><label className="field-label">TRACKING PROFILE<select value={profile} onChange={e => setProfile(e.target.value)}><option value="manual">Manual command</option><option value="sine">Sinusoidal tracking</option><option value="pass">Satellite pass</option></select></label><Range label="AZ TARGET" value={params.azTarget} min={0} max={360} unit="°" onChange={v => setParam('azTarget', v)} /><Range label="EL TARGET" value={params.elTarget} min={0} max={90} unit="°" onChange={v => setParam('elTarget', v)} /></Panel>
       <Panel title="PID CONTROLLER" icon={<Gauge size={15} />}><Range label="PROPORTIONAL / KP" value={params.kp} min={0} max={4} step={0.1} onChange={v => setParam('kp', v)} /><Range label="INTEGRAL / KI" value={params.ki} min={0} max={0.5} step={0.01} onChange={v => setParam('ki', v)} /><Range label="DERIVATIVE / KD" value={params.kd} min={0} max={1.5} step={0.01} onChange={v => setParam('kd', v)} /><div className="pid-readout"><span>P <b>{fmt(sim.az.p)}</b></span><span>I <b>{fmt(sim.az.i)}</b></span><span>D <b>{fmt(sim.az.d)}</b></span></div></Panel>
