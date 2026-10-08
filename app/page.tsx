@@ -6,9 +6,9 @@ import { AntennaSimulator } from '@/src/simulation/simulator'
 import { SimulationState } from '@/src/simulation/types'
 
 type Axis = { position: number; velocity: number; target: number; measured: number; command: number; error: number; p: number; i: number; d: number; truePosition: number }
-type Sim = { time: number; az: Axis; el: Axis; health: number; state: 'NORMAL' | 'DEGRADED' | 'FAULT' | 'SAFE'; watchdog: number; rms: number; maxError: number; events: string[]; history: { t: number; target: number; actual: number; error: number; command: number; measured: number }[] }
+type Sim = { time: number; az: Axis; el: Axis; health: number; state: 'NORMAL' | 'DEGRADED' | 'FAULT' | 'SAFE'; watchdog: number; rms: number; maxError: number; metrics: SimulationState['metrics']; events: string[]; history: { t: number; target: number; actual: number; error: number; command: number; measured: number }[] }
 const initialAxis = (target: number): Axis => ({ position: 12, velocity: 0, target, measured: 12, command: 0, error: target - 12, p: 0, i: 0, d: 0, truePosition: 12 })
-const initialSim = (): Sim => ({ time: 0, az: initialAxis(68), el: initialAxis(32), health: 100, state: 'NORMAL', watchdog: 0, rms: 0, maxError: 0, events: ['SYSTEM INITIALIZED', 'Controller heartbeat nominal'], history: [] })
+const initialSim = (): Sim => ({ time: 0, az: initialAxis(68), el: initialAxis(32), health: 100, state: 'NORMAL', watchdog: 0, rms: 0, maxError: 0, metrics: { rmsError: 0, maximumError: 0, maximumControlEffort: 0, steadyStateError: 0, riseTime: null, overshoot: 0, settlingTime: null }, events: ['SYSTEM INITIALIZED', 'Controller heartbeat nominal'], history: [] })
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 const fmt = (v: number, digits = 1) => Number.isFinite(v) ? v.toFixed(digits) : '—'
@@ -34,9 +34,8 @@ function toDashboardState(state: SimulationState): Sim {
     command: point.commandAz,
     measured: point.actualAz,
   }))
-  const errors = history.map(point => point.error)
-  const rms = errors.length ? Math.sqrt(errors.reduce((sum, error) => sum + error ** 2, 0) / errors.length) : 0
-  const health = clamp(100 - rms * 1.3 - (state.safety === 'FAULT' ? 35 : state.safety === 'DEGRADED' ? 18 : 0), 0, 100)
+  const { metrics } = state
+  const health = clamp(100 - metrics.rmsError * 1.3 - (state.safety === 'FAULT' ? 35 : state.safety === 'DEGRADED' ? 18 : 0), 0, 100)
   return {
     time: state.time,
     az: mapAxis(state.az, state.targetAz),
@@ -44,8 +43,9 @@ function toDashboardState(state: SimulationState): Sim {
     health,
     state: state.safety === 'WARNING' ? 'DEGRADED' : state.safety,
     watchdog: state.watchdog === 'TIMEOUT' ? 3.2 : 0.2,
-    rms,
-    maxError: errors.length ? Math.max(...errors) : 0,
+    rms: metrics.rmsError,
+    maxError: metrics.maximumError,
+    metrics,
     events: state.events,
     history,
   }
