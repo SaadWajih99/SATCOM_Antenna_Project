@@ -1,0 +1,617 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R 13 0 R] /Count 5 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 2730 >>
+stream
+BT
+/F1 9 Tf
+42 760 Td
+12 TL
+() Tj
+0 -12 Td
+/F1 13 Tf
+(SATCOM ANTENNA CONTROL SIMULATOR) Tj
+/F1 9 Tf
+0 -16 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Engineering Handbook ? repository-grounded edition) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Repository: SaadWajih99/SATCOM_Antenna_Project) Tj
+0 -12 Td
+(Scope: Interactive browser-based two-axis electromechanical pointing demonstrator) Tj
+0 -12 Td
+(Evidence basis: Source inspection and pnpm test \(1 file, 6 tests passed\).) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(NOTE: The simulator deliberately abstracts high-fidelity RF, structural and electromagnetic) Tj
+0 -12 Td
+(phenomena while retaining the electromechanical behaviours most relevant to antenna pointing,) Tj
+0 -12 Td
+(control, fault detection and safety.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(1. What exists today) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Implemented and verified) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(? Next.js 16 App Router browser UI in app/page.tsx.) Tj
+0 -12 Td
+(? Simulation engine in src/simulation/ with typed configuration/state, PID control, plant) Tj
+0 -12 Td
+(dynamics, encoder effects, delay, metrics, safety, and watchdog outputs.) Tj
+0 -12 Td
+(? Six visible fault toggles: encoder dropout, excessive backlash, motor saturation/degradation,) Tj
+0 -12 Td
+(wind disturbance, feedback delay, and watchdog timeout.) Tj
+0 -12 Td
+(? Live target controls, PID controls, plant controls, antenna SVG, telemetry, charts, health) Tj
+0 -12 Td
+(rows, safety state, event log, pause, reset, and emergency stop.) Tj
+0 -12 Td
+(? Vitest test suite: 6 passing tests in tests/simulation.test.ts.) Tj
+0 -12 Td
+(? GitHub Actions workflow in .github/workflows/deploy.yml intended to build and deploy GitHub) Tj
+0 -12 Td
+(Pages.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Not implemented / not evidenced) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(? RF propagation, link budget, orbital mechanics, radiation patterns, FEM, atmospheric) Tj
+0 -12 Td
+(modelling, or hardware I/O.) Tj
+0 -12 Td
+(? A separate health-monitor or safety-manager module; those decisions currently occur in) Tj
+0 -12 Td
+(src/simulation/simulator.ts and UI-derived health values in app/page.tsx.) Tj
+0 -12 Td
+(? A physically validated motor electromagnetic model or experimentally identified transfer) Tj
+0 -12 Td
+(function.) Tj
+0 -12 Td
+(? A true 3D antenna model: the current visualization is an SVG projection driven by state) Tj
+0 -12 Td
+(values.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(2. Repository map) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(text) Tj
+0 -12 Td
+(app/page.tsx                  Client dashboard and UI-to-engine wiring) Tj
+0 -12 Td
+(app/layout.tsx                Root metadata/layout) Tj
+0 -12 Td
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 2944 >>
+stream
+BT
+/F1 9 Tf
+42 760 Td
+12 TL
+(app/globals.css               Dashboard design system and responsive styles) Tj
+0 -12 Td
+(src/simulation/types.ts       Types, defaults, cloning, delayed measurement) Tj
+0 -12 Td
+(src/simulation/pidController.ts Discrete PID calculation) Tj
+0 -12 Td
+(src/simulation/plant.ts       Axis mechanics, motor, gearbox, encoder model) Tj
+0 -12 Td
+(src/simulation/simulator.ts   Two-axis orchestration, metrics, safety, history) Tj
+0 -12 Td
+(tests/simulation.test.ts      Behaviour tests for controller/plant/simulator) Tj
+0 -12 Td
+(docs/.md                     Architecture, safety, testing, limitations, interview notes) Tj
+0 -12 Td
+(.github/workflows/deploy.yml  Build/test/Pages deployment workflow) Tj
+0 -12 Td
+(next.config.mjs               Static export configuration for Pages) Tj
+0 -12 Td
+(package.json                  pnpm scripts and dependencies) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(3. End-to-end data flow) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(text) Tj
+0 -12 Td
+(Slider / profile) Tj
+0 -12 Td
+(  -> React params state) Tj
+0 -12 Td
+(  -> AntennaSimulator.setTargets\(\)) Tj
+0 -12 Td
+(  -> simulator.update\(dt\)) Tj
+0 -12 Td
+(  -> delayed encoder feedback) Tj
+0 -12 Td
+(  -> stepAxis\(\) for AZ and EL) Tj
+0 -12 Td
+(  -> PID error and P/I/D terms) Tj
+0 -12 Td
+(  -> motor/gearbox/friction/backlash/encoder model) Tj
+0 -12 Td
+(  -> safety override) Tj
+0 -12 Td
+(  -> state.history and metrics) Tj
+0 -12 Td
+(  -> React setSim\(\)) Tj
+0 -12 Td
+(  -> antenna SVG, charts, telemetry, health, event log) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The important caveat is that app/page.tsx also derives some display health values. The) Tj
+0 -12 Td
+(authoritative physical state and safety label come from the simulation engine, while the) Tj
+0 -12 Td
+(percentage bars are presentation calculations.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(4. Simulation execution) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(AntennaSimulator.update\(dt\) clamps the requested step to 0.001?0.1 s, advances time, obtains) Tj
+0 -12 Td
+(delayed measured encoder feedback, steps both axes, applies a blocking override for emergency) Tj
+0 -12 Td
+(stop, watchdog timeout, or failed encoder, computes a safety label, appends a bounded history,) Tj
+0 -12 Td
+(calculates metrics, and records state transitions.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The engine stores up to 600 history points. The UI timer in app/page.tsx calls the engine) Tj
+0 -12 Td
+(approximately every 50 ms while running. Real elapsed time is converted to dt, so the simulation) Tj
+0 -12 Td
+(is not dependent on a perfect browser timer.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(5. Control law and plant) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The controller is discrete-time. The exact implementation should be read in) Tj
+0 -12 Td
+(src/simulation/pidController.ts; its output is bounded by the configured output limit and its) Tj
+0 -12 Td
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 2993 >>
+stream
+BT
+/F1 9 Tf
+42 760 Td
+12 TL
+(integral is constrained by the configured integral limit. stepAxis\(\) consumes the target,) Tj
+0 -12 Td
+(feedback, axis configuration, time step, and disturbance torque, then returns updated axis state) Tj
+0 -12 Td
+(including position, velocity, command, torque, encoder status, and PID terms.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The conceptual closed loop is:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(text) Tj
+0 -12 Td
+(reference - measured feedback = error) Tj
+0 -12 Td
+(error -> P/I/D controller -> bounded command) Tj
+0 -12 Td
+(command -> motor response and torque) Tj
+0 -12 Td
+(motor torque -> gearbox efficiency and ratio) Tj
+0 -12 Td
+(net torque -> inertia/friction/backlash dynamics) Tj
+0 -12 Td
+(true position -> encoder resolution/noise/offset/dropout) Tj
+0 -12 Td
+(measured position -> next controller sample) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(This is a demonstration model, not a validated plant identification. Units and sign conventions) Tj
+0 -12 Td
+(must be taken from types.ts, plant.ts, and the tests when extending it.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(6. Fault behaviour) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+( |  UI fault  |  Model change  |  Observable consequence  |) Tj
+0 -12 Td
+( | --- | --- | --- |) Tj
+0 -12 Td
+( |  Encoder dropout  |  encoder.dropout = true  |  Feedback becomes invalid/failed; engine can) Tj
+0 -12 Td
+(force zero command and FAULT.  |) Tj
+0 -12 Td
+( |  Excessive backlash  |  Gearbox backlash raised to 3.5; friction is increased  |) Tj
+0 -12 Td
+(Dead-zone-like tracking degradation and larger error.  |) Tj
+0 -12 Td
+( |  Motor saturation  |  UI forces motor degradation floor of 48%  |  Reduced effective) Tj
+0 -12 Td
+(actuation and larger residual error.  |) Tj
+0 -12 Td
+( |  Wind disturbance  |  Disturbance torque becomes 0.22  |  Persistent external load must be) Tj
+0 -12 Td
+(rejected by control effort.  |) Tj
+0 -12 Td
+( |  Feedback delay  |  Configured feedback delay is enabled  |  Controller acts on older) Tj
+0 -12 Td
+(measured position; transient response changes.  |) Tj
+0 -12 Td
+( |  Watchdog timeout  |  watchdogTimeout = true  |  Commands are zeroed and state becomes SAFE.) Tj
+0 -12 Td
+(|) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Emergency stop is independent of normal PID intent: config.emergencyStop causes command and) Tj
+0 -12 Td
+(torque to be zeroed. Reset clears the engine state and releases the UI emergency-stop flag.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(7. Safety and health interpretation) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The engine safety label is deterministic:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(? SAFE: emergency stop or watchdog timeout.) Tj
+0 -12 Td
+(? FAULT: encoder failure.) Tj
+0 -12 Td
+(? DEGRADED: combined AZ/EL error greater than 20 degrees.) Tj
+0 -12 Td
+(? WARNING: error greater than 8 degrees.) Tj
+0 -12 Td
+(? NORMAL: otherwise.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The UI maps WARNING to its displayed DEGRADED presentation state. This is a useful distinction) Tj
+0 -12 Td
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2886 >>
+stream
+BT
+/F1 9 Tf
+42 760 Td
+12 TL
+(to explain in an interview: the engine and display vocabulary are not identical.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Health percentage in toDashboardState\(\) is a UI-derived score based mainly on RMS error and) Tj
+0 -12 Td
+(safety penalties. The subsystem rows separately use RMS error, configured degradation, backlash,) Tj
+0 -12 Td
+(and encoder fault state. These are meaningful indicators, but they are not a standards-based) Tj
+0 -12 Td
+(condition-monitoring system.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(8. Metrics) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(calculateMetrics\(\) derives values from actual bounded history:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(? RMS error: root mean square of the combined AZ/EL error magnitude.) Tj
+0 -12 Td
+(? Maximum error: largest combined error magnitude.) Tj
+0 -12 Td
+(? Maximum control effort: largest absolute axis command.) Tj
+0 -12 Td
+(? Steady-state error: mean of the last up-to-25 error samples.) Tj
+0 -12 Td
+(? Rise time: first history point below 10% of initial error.) Tj
+0 -12 Td
+(? Overshoot: maximum error minus initial error, lower bounded at zero.) Tj
+0 -12 Td
+(? Settling time: first point after which all remaining errors are within the selected threshold.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(These definitions are implementation-specific. In particular, the rise/settling definitions) Tj
+0 -12 Td
+(should be reviewed before presenting them as textbook step-response metrics.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(9. UI guide) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(app/page.tsx is a client component. React state stores parameters, selected profile, fault) Tj
+0 -12 Td
+(flags, emergency stop, run state, and the dashboard projection. useEffect synchronizes UI) Tj
+0 -12 Td
+(configuration into the engine and starts/stops the simulation interval. The antenna graphic is) Tj
+0 -12 Td
+(SVG; its rotation is driven by sim.az.position, while target and readouts use current) Tj
+0 -12 Td
+(target/error state.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The two charts render from the engine history. The displayed AZ chart uses targetAz and) Tj
+0 -12 Td
+(actualAz; control effort uses commandAz. The chart range is fixed for display, so clipping is) Tj
+0 -12 Td
+(possible when values exceed the visual range.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(10. Tests and reproducibility) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Run:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(bash) Tj
+0 -12 Td
+(pnpm install) Tj
+0 -12 Td
+(pnpm test) Tj
+0 -12 Td
+(pnpm build) Tj
+0 -12 Td
+(pnpm dev) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The verified baseline in this handbook is pnpm test: 1 test file, 6 tests, all passed. Build and) Tj
+0 -12 Td
+(Pages deployment must be checked in the GitHub Actions run for the current commit; a failed) Tj
+0 -12 Td
+(workflow means the public Pages URL is not yet a valid demonstration endpoint.) Tj
+0 -12 Td
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 2615 >>
+stream
+BT
+/F1 9 Tf
+42 760 Td
+12 TL
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(11. Interview explanation) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(A concise answer is:) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(NOTE: ?This is a browser-based two-axis pointing simulator. A target is compared with delayed) Tj
+0 -12 Td
+(encoder feedback, each axis is passed through a discrete PID controller, and the command drives) Tj
+0 -12 Td
+(a simplified motor, gearbox, friction, backlash, inertia, and encoder model. The engine records) Tj
+0 -12 Td
+(actual history and derives tracking metrics. Fault toggles modify real model parameters or) Tj
+0 -12 Td
+(feedback validity, while deterministic safety overrides disable the drive for encoder failure,) Tj
+0 -12 Td
+(watchdog timeout, or emergency stop. I present it as an educational electromechanical) Tj
+0 -12 Td
+(demonstrator, not as a validated RF or flight-qualified model.?) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(12. Learning checklist) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(1. Trace Page -> setTargets -> update -> stepAxis -> PID -> state.history.) Tj
+0 -12 Td
+(2. Change only Kp, then observe command and error; repeat with backlash and encoder dropout.) Tj
+0 -12 Td
+(3. Read types.ts before changing units or defaults.) Tj
+0 -12 Td
+(4. Read plant.ts to connect torque, inertia, friction, gearbox, and encoder effects.) Tj
+0 -12 Td
+(5. Use the tests as executable examples of intended behaviour.) Tj
+0 -12 Td
+(6. Treat every UI health percentage as a derived indicator and verify its source before claiming) Tj
+0 -12 Td
+(it is an engineering standard.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(13. Limitations and next defensible improvements) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(The next engineering improvements should be incremental: separate health and safety modules, add) Tj
+0 -12 Td
+(explicit per-axis telemetry for all PID terms, expand tests for every requested fault, make) Tj
+0 -12 Td
+(units explicit in types, and add a reproducible Pages smoke test. Do not add RF or orbital) Tj
+0 -12 Td
+(detail until the electromechanical model, measurements, and safety transitions are independently) Tj
+0 -12 Td
+(verified.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Coverage status: This handbook covers every project-owned source/configuration area discovered) Tj
+0 -12 Td
+(in the repository inventory. Generated dependencies and vendor code are intentionally described) Tj
+0 -12 Td
+(by usage rather than reproduced.) Tj
+0 -12 Td
+() Tj
+0 -12 Td
+(Generated from the repository state inspected for this handbook; line numbers should be) Tj
+0 -12 Td
+(regenerated after future edits.) Tj
+0 -12 Td
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 12 0 R >>
+endobj
+xref
+0 14
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000147 00000 n 
+0000000217 00000 n 
+0000002999 00000 n 
+0000003125 00000 n 
+0000006121 00000 n 
+0000006247 00000 n 
+0000009292 00000 n 
+0000009418 00000 n 
+0000012357 00000 n 
+0000012485 00000 n 
+0000015153 00000 n 
+trailer
+<< /Size 14 /Root 1 0 R >>
+startxref
+15281
+%%EOF
